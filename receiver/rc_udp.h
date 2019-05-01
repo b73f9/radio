@@ -12,28 +12,25 @@
 class UDPMulticastWriter {
     private:
         int sock;
-
+        bool ready = false;
         in_port_t port;
         std::string ip;
-
-        struct sockaddr_in remote_address;
-        
-        bool ready = false;
+        sockaddr_in remote_address;
 
         void init(){
             while(true){
                 try{
-                    memset(&remote_address, 0, sizeof(struct sockaddr_in));
+                    memset(&remote_address, 0, sizeof(sockaddr_in));
                     sock = socket(AF_INET, SOCK_DGRAM, 0);
                     if(sock < 0)
                         throw std::runtime_error("Socket creation failed!");
 
                     int optval = 1;
-                    if(setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void*)&optval, sizeof optval) < 0)
+                    if(setsockopt(sock, SOL_SOCKET, SO_BROADCAST, (void*)&optval, sizeof(optval)) < 0)
                         throw std::runtime_error("setsockopt broadcast");
 
-                    optval = 4; // ttl
-                    if(setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&optval, sizeof optval) < 0)
+                    optval = 4;
+                    if(setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&optval, sizeof(optval)) < 0)
                         throw std::runtime_error("setsockopt multicast ttl");
 
                     remote_address.sin_family = AF_INET;
@@ -73,8 +70,7 @@ class UDPMulticastWriter {
         void write(const std::vector<char> &packet){
             assert(ready);
             if(sendto(sock, packet.data(), packet.size(), 0, 
-                      (struct sockaddr *) &remote_address, 
-                      sizeof(remote_address))
+                      (sockaddr *) &remote_address, sizeof(remote_address))
                != (ssize_t) packet.size()){
                 std::cerr << "sendto " << errno << "\n";
                 deinit();
@@ -91,11 +87,9 @@ class UDPMulticastWriter {
 class UDPWriter {
     private:
         int sock;
-
-        in_port_t port;
-        struct sockaddr_in remote_address;
-        
         bool ready = false;
+        in_port_t port;
+        sockaddr_in remote_address;
 
         void init(){
             while(true){
@@ -104,7 +98,6 @@ class UDPWriter {
                     if(sock < 0)
                         throw std::runtime_error("Socket creation failed");
 
-                    // Set buffer size
                     int sndbuff = 212992;
                     setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &sndbuff, sizeof(sndbuff));
 
@@ -138,9 +131,8 @@ class UDPWriter {
         void write(const std::vector<char> &packet, sockaddr_in addr){
             assert(ready);
 
-            ssize_t result =
-                    sendto(sock, packet.data(), packet.size(), 0,
-                           (struct sockaddr *) &addr, sizeof(addr));
+            ssize_t result = sendto(sock, packet.data(), packet.size(), 0,
+                                    (sockaddr*) &addr, sizeof(addr));
 
             if(result != (ssize_t) packet.size()){
                 std::cerr << "sendto " << errno << "\n";
@@ -159,7 +151,7 @@ class UDPReader {
         int sock;
 
         in_port_t port;
-        struct sockaddr_in local_address;
+        sockaddr_in local_address;
 
         bool ready = false;
 
@@ -174,7 +166,7 @@ class UDPReader {
                     local_address.sin_addr.s_addr = htonl(INADDR_ANY);
                     local_address.sin_port = htons(port);
 
-                    if(bind(sock, (struct sockaddr *)&local_address, sizeof local_address) < 0)
+                    if(bind(sock, (sockaddr *)&local_address, sizeof(local_address)) < 0)
                         throw std::runtime_error("bind failed!");
 
                     break;
@@ -209,7 +201,7 @@ class UDPReader {
             assert(ready);
             sockaddr_in saddr;
 
-            memset(&saddr, 0, sizeof(struct sockaddr_in));
+            memset(&saddr, 0, sizeof(sockaddr_in));
 
             socklen_t socklen = sizeof(saddr);
             std::vector<char> buffer;
@@ -218,7 +210,7 @@ class UDPReader {
             int status = 0;
             while(true){
                 try{
-                    status = recvfrom(sock, buffer.data(), 10240, 0, (struct sockaddr *)&saddr, &socklen);
+                    status = recvfrom(sock, buffer.data(), 10240, 0, (sockaddr *)&saddr, &socklen);
                     if(status < 0)
                         throw std::runtime_error("recvfrom failed!");
 

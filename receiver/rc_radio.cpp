@@ -17,9 +17,7 @@
 #include <set>
 
 extern std::atomic_flag io_mutex;
-
 void lck(std::atomic_flag &f);
-
 void ulck(std::atomic_flag &f);
 
 #include "rc_radio.h"
@@ -80,9 +78,6 @@ void Radio::loop(){
         
         if(msg.type == Message_t::type_t::ReceiveGotPacket)
             receiveGotPacketHandler(msg);
-        
-        if(msg.type == Message_t::type_t::StdOutReady)
-            stdOutReadyHandler();
 
         if(msg.type == Message_t::type_t::RexmitReminder)
             rexmitReminderHandler(msg);
@@ -167,27 +162,6 @@ void Radio::receiveGotPacketHandler(Message_t msg){
         timer->setReminder(temp, current_session_id);
     }
 
-    tryOutput();
-}
-
-void Radio::tryOutput(){
-    if(buffer.buffered_enough && stdout_ready){
-        try{
-            auto pckt = buffer.getPacket();
-            stdout_ready = false;
-            outputter->outputData(std::move(pckt));
-        } catch(std::runtime_error &e){
-            if(e.what() != std::string("NDATAINBUFF"))
-                throw e;
-            buffer.clear();
-        }
-    }
-}
-
-void Radio::stdOutReadyHandler(){
-    outMsgInFlight.clear();
-    if(!noStation)
-        tryOutput();
 }
 
 void Radio::rexmitReminderHandler(Message_t msg){

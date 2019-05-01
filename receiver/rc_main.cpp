@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <deque>
 #include <cassert>
+#include <chrono>
 #include <set>
 
 #include <boost/program_options.hpp>
@@ -26,7 +27,7 @@ namespace po = boost::program_options;
 std::atomic_flag io_mutex = ATOMIC_FLAG_INIT;
 
 void lck(std::atomic_flag &f){
-    while (f.test_and_set(std::memory_order_acquire));
+    while(f.test_and_set(std::memory_order_acquire));
 }
 
 void ulck(std::atomic_flag &f){
@@ -81,11 +82,9 @@ int main(int argc, char *argv[]){
 
 
     Radio radio(buffer_size, ctrl_port);
-
     Timer timer(&radio, rexmit_request_interval);
 
     Receiver receiver(&radio);
-
     AnnouncementListener announcementListener(&radio, ctrl_port, dscvr_addr);
 
     TelnetManager telnetMgr(&radio);

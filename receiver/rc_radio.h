@@ -39,26 +39,21 @@ class Radio{
         Timer *timer = nullptr;
         StdOutWriter *outputter = nullptr;
 
+        Buffer_t buffer;
+
         UDPWriter sckt;
         uint16_t ctrlport;
 
-        Buffer_t buffer;
-
+        std::queue<Message_t> message_queue;
         std::atomic_flag m = ATOMIC_FLAG_INIT;
         uint64_t current_session_id = 0;
 
         std::vector<StationInfo_t> stations;
-
-        std::atomic_bool stdout_ready;
-        std::queue<Message_t> message_queue;
-
         bool noStation = true;
         StationInfo_t current_station = {"", "", sockaddr_in(), 0};
 
         bool waitForSpecificStation = false;
         std::string nameOfTheStationWaitingFor = "";
-
-        std::atomic_flag outMsgInFlight = ATOMIC_FLAG_INIT;
         
         void loop();
         void startListening(StationInfo_t station);
@@ -105,22 +100,16 @@ class Radio{
 
         void emit_menu();
 
-        void tryOutput();
-
         //Event handlers
         void instanceArrowUpHandler();
         void instanceArrowDownHandler();
         void stationListHandler(Message_t msg);
         void receiveGotPacketHandler(Message_t msg);
-        void stdOutReadyHandler();
         void rexmitReminderHandler(Message_t msg);
 
     public:
 
-        Radio(uint64_t bufsize, uint64_t Ctrlport){
-            stdout_ready = false;
-            ctrlport = Ctrlport;
-            buffer = Buffer_t(bufsize);
+        Radio(uint64_t bufsize, uint64_t Ctrlport) : buffer(bufsize), ctrlport(Ctrlport){
         }
 
         void spawnThread(){
@@ -158,6 +147,10 @@ class Radio{
             outputter = sout;
         }
 
+        std::vector<char> getData(){
+            return buffer.getPacket();
+        }
+
         // Events
         void instanceArrowUp(){
             Message_t msg;
@@ -192,14 +185,5 @@ class Radio{
             msg.chunkids = std::move(chunkids);
             msg.sess = sessid;
             queueMessage(std::move(msg));
-        }
-
-        void stdOutReady(){
-            stdout_ready = true;
-            if(!outMsgInFlight.test_and_set()){
-                Message_t msg;
-                msg.type = Message_t::type_t::StdOutReady;
-                queueMessage(std::move(msg));
-            }
         }
 };
